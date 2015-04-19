@@ -302,46 +302,51 @@
             }
           }).call(_this);
           current_path = [document.location.pathname, document.location.hash].join('');
-          if (_this._isRedirect(path, current_path)) {
-            _this._redirect(step, path);
-            return;
-          }
-          if (_this._isOrphan(step)) {
-            if (!step.orphan) {
-              _this._debug("Skip the orphan step " + (_this._current + 1) + ".\nOrphan option is false and the element does not exist or is hidden.");
-              if (skipToPrevious) {
-                _this._showPrevStep();
-              } else {
-                _this._showNextStep();
+          
+          function continueStep() {
+            if (_this._isOrphan(step)) {
+              if (!step.orphan) {
+                _this._debug("Skip the orphan step " + (_this._current + 1) + ".\nOrphan option is false and the element does not exist or is hidden.");
+                if (skipToPrevious) {
+                  _this._showPrevStep();
+                } else {
+                  _this._showNextStep();
+                }
+                return;
               }
-              return;
+              _this._debug("Show the orphan step " + (_this._current + 1) + ". Orphans option is true.");
             }
-            _this._debug("Show the orphan step " + (_this._current + 1) + ". Orphans option is true.");
-          }
-          if (step.backdrop) {
-            _this._showBackdrop(step);
-          }
-          showPopoverAndOverlay = function() {
-            if (_this.getCurrentStep() !== i) {
-              return;
+            if (step.backdrop) {
+              _this._showBackdrop(step);
             }
-            if ((step.element != null) && step.backdrop) {
-              _this._showOverlayElement(step);
+            showPopoverAndOverlay = function() {
+              if (_this.getCurrentStep() !== i) {
+                return;
+              }
+              if ((step.element != null) && step.backdrop) {
+                _this._showOverlayElement(step);
+              }
+              _this._showPopover(step, i);
+              if (step.onShown != null) {
+                step.onShown(_this);
+              }
+              return _this._debug("Step " + (_this._current + 1) + " of " + _this._options.steps.length);
+            };
+            if (step.autoscroll) {
+              _this._scrollIntoView(step.element, showPopoverAndOverlay);
+            } else {
+              showPopoverAndOverlay();
             }
-            _this._showPopover(step, i);
-            if (step.onShown != null) {
-              step.onShown(_this);
+            if (step.duration) {
+              return _this.resume();
             }
-            return _this._debug("Step " + (_this._current + 1) + " of " + _this._options.steps.length);
-          };
-          if (step.autoscroll) {
-            _this._scrollIntoView(step.element, showPopoverAndOverlay);
-          } else {
-            showPopoverAndOverlay();
           }
-          if (step.duration) {
-            return _this.resume();
-          }
+          
+          if (_this._isRedirect(path, current_path)) {
+            _this._redirect(step, path).then(function () {
+              continueStep();
+            });
+          } else continueStep();
         };
       })(this);
       if (step.delay) {
@@ -459,7 +464,7 @@
 
     Tour.prototype._redirect = function(step, path) {
       if ($.isFunction(step.redirect)) {
-        return step.redirect.call(this, path);
+        return step.redirect.call(this, step);
       } else if (step.redirect === true) {
         this._debug("Redirect to " + path);
         return document.location.href = path;
